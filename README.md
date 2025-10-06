@@ -1557,10 +1557,6 @@ When an endpoint can return either a plain array or a paginated response (e.g., 
           "name": { "type": "string" }
         }
       },
-      "UserArray": {
-        "type": "array",
-        "items": { "$ref": "#/components/schemas/User" }
-      },
       "PaginatedUserResponse": {
         "type": "object",
         "required": ["data", "total", "count", "itemsPerPage"],
@@ -1573,12 +1569,6 @@ When an endpoint can return either a plain array or a paginated response (e.g., 
           "count": { "type": "integer" },
           "itemsPerPage": { "type": "integer" }
         }
-      },
-      "UserListResponse": {
-        "oneOf": [
-          { "$ref": "#/components/schemas/UserArray" },
-          { "$ref": "#/components/schemas/PaginatedUserResponse" }
-        ]
       }
     },
     "responses": {
@@ -1587,7 +1577,13 @@ When an endpoint can return either a plain array or a paginated response (e.g., 
         "content": {
           "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/UserListResponse"
+              "oneOf": [
+                {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/User" }
+                },
+                { "$ref": "#/components/schemas/PaginatedUserResponse" }
+              ]
             }
           }
         }
@@ -1619,9 +1615,6 @@ When an endpoint can return either a plain array or a paginated response (e.g., 
 
 **Result:**
 ```typescript
-// Plain array schema
-export type UserArray = User[];
-
 // Paginated response schema
 export interface PaginatedUserResponse {
   data: User[];
@@ -1630,11 +1623,11 @@ export interface PaginatedUserResponse {
   itemsPerPage: number;
 }
 
-// Unified response type
-export type UserListResponse = UserArray | PaginatedUserResponse;
+// The response type will be generated as a union
+export type UserListResponse = User[] | PaginatedUserResponse;
 
 // Usage
-const response: UserListResponse = await api.getUsers({ paginate: true });
+const response = await api.getUsers({ paginate: true });
 
 // Type guard to check which type was returned
 if (Array.isArray(response)) {
