@@ -21,9 +21,13 @@ This project uses [`swagger-typescript-api`](https://github.com/acacode/swagger-
 ### Why This Approach?
 
 ✅ **Single Source of Truth** - API contracts defined once in OpenAPI
+
 ✅ **Type Safety** - Automatic TypeScript types prevent runtime errors
+
 ✅ **Developer Experience** - Auto-complete and IntelliSense in IDEs
+
 ✅ **Documentation** - OpenAPI spec serves as living documentation
+
 ✅ **Consistency** - Frontend and backend share the same contract
 
 ---
@@ -64,13 +68,15 @@ Key flags:
 
 ## Schema Design Best Practices
 
-### 1. Always Use `components` for Reusable Definitions
+### 1. Always Use `components` for Definitions
 
-Define all reusable types in the `components` section (schemas, requestBodies, and responses) rather than inline. This promotes consistency, maintainability, and follows the DRY principle.
+**⚠️ CRITICAL RULE: Never define schemas, enums, request bodies, or responses inline in your paths.**
 
-#### Use `components/schemas` for Data Models
+Define all reusable types in the `components` section rather than inline. 
 
-Define your data structures once and reference them everywhere:
+#### Use `components/schemas` for Data Models and Enums
+
+Define your data structures and enums once and reference them everywhere:
 
 ```json
 {
@@ -78,11 +84,17 @@ Define your data structures once and reference them everywhere:
     "schemas": {
       "User": {
         "type": "object",
-        "required": ["id", "name"],
+        "required": ["id", "name", "status"],
         "properties": {
           "id": { "type": "integer" },
-          "name": { "type": "string" }
+          "name": { "type": "string" },
+          "status": { "$ref": "#/components/schemas/UserStatus" }
         }
+      },
+      "UserStatus": {
+        "type": "string",
+        "enum": ["active", "inactive", "pending", "suspended"],
+        "description": "User account status"
       },
       "ErrorResponse": {
         "type": "object",
@@ -93,14 +105,64 @@ Define your data structures once and reference them everywhere:
         }
       }
     }
+  },
+  "paths": {
+    "/users/{id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/User" }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }
 ```
 
-#### Use `components/requestBodies` for Reusable Request Bodies
+❌ **WRONG - Inline definitions:**
+```json
+{
+  "paths": {
+    "/users/{id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "integer" },
+                    "name": { "type": "string" },
+                    "status": {
+                      "type": "string",
+                      "enum": ["active", "inactive", "pending"]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+**Problems with inline definitions:**
+- ❌ Cannot reuse the User schema or status enum elsewhere
+- ❌ No named TypeScript interface/type generated
+- ❌ Harder to maintain and keep consistent
+- ❌ Poor documentation and discoverability
 
-When the same request body is used across multiple endpoints (e.g., create and update):
+#### Use `components/requestBodies` for Request Bodies
 
+✅ **CORRECT - Reusable request body:**
 ```json
 {
   "components": {
@@ -131,10 +193,44 @@ When the same request body is used across multiple endpoints (e.g., create and u
 }
 ```
 
-#### Use `components/responses` for Common Responses
+❌ **WRONG - Inline request body (duplicated):**
+```json
+{
+  "paths": {
+    "/users": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UserWrite" }
+            }
+          }
+        }
+      }
+    },
+    "/users/{id}": {
+      "put": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UserWrite" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+**Problems:** Same request body definition duplicated - changes require updating multiple places.
+
+#### Use `components/responses` for Responses
 
 Especially useful for standardizing error responses across all endpoints:
 
+✅ **CORRECT - Reusable responses:**
 ```json
 {
   "components": {
@@ -181,22 +277,85 @@ Especially useful for standardizing error responses across all endpoints:
           "401": { "$ref": "#/components/responses/UnauthorizedError" }
         }
       }
+    },
+    "/products/{id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Product retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProductRead" }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFoundError" },
+          "401": { "$ref": "#/components/responses/UnauthorizedError" }
+        }
+      }
     }
   }
 }
 ```
 
-**Benefits of using `components`:**
-- ✅ **DRY (Don't Repeat Yourself)** - Define once, use everywhere
-- ✅ **Consistency** - Standardized structures across all endpoints
-- ✅ **Maintainability** - Update in one place, reflected everywhere
-- ✅ **Type Safety** - Generates clean, reusable TypeScript interfaces
-- ✅ **Documentation** - Centralized, well-documented types
+❌ **WRONG - Inline error responses (duplicated across endpoints):**
+```json
+{
+  "paths": {
+    "/users/{id}": {
+      "get": {
+        "responses": {
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products/{id}": {
+      "get": {
+        "responses": {
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
 
 **Naming Recommendations:**
-- Schemas: `User`, `UserRead`, `UserWrite`, `ErrorResponse`
+- Schemas: `User`, `UserRead`, `UserWrite`, `ErrorResponse`, `UserStatus`
 - Request Bodies: `UserRequest`, `CreateUserRequest`, `UpdateUserRequest`
-- Responses: `UserResponse`, `NotFoundError`, `ValidationError`
+- Responses: `UserResponse`, `NotFoundError`, `ValidationError`, `UnauthorizedError`
+
+---
+
+
+**When you can inline (rare exceptions):**
+- ✅ Unique, endpoint-specific responses that will never be reused (e.g., a specific 200 success response)
+- ✅ Simple query parameters with primitive types
 
 ### 2. Use `required` to Define Mandatory Fields
 
