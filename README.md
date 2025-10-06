@@ -345,15 +345,6 @@ Especially useful for standardizing error responses across all endpoints:
 ```
 
 
-**Naming Recommendations:**
-- Schemas: `User`, `UserRead`, `UserWrite`, `ErrorResponse`, `UserStatus`
-- Request Bodies: `UserRequest`, `CreateUserRequest`, `UpdateUserRequest`
-- Responses: `UserResponse`, `NotFoundError`, `ValidationError`, `UnauthorizedError`
-- Headers: `X-Rate-Limit`, `X-Total-Count`, `X-Request-Id`, `X-Pagination-Offset`
-
----
-
-
 **When you can inline (rare exceptions):**
 - ✅ Unique, endpoint-specific responses that will never be reused (e.g., a specific 200 success response)
 - ✅ Simple query parameters with primitive types
@@ -498,56 +489,7 @@ When a header is unique to a specific endpoint, it's acceptable to define it inl
 
 ---
 
-### 3. Use `required` to Define Mandatory Fields
-
-❌ **BAD** - No required fields:
-```json
-{
-  "User": {
-    "type": "object",
-    "properties": {
-      "id": { "type": "integer" },
-      "email": { "type": "string" }
-    }
-  }
-}
-```
-
-**Result:**
-```typescript
-// ❌ Everything is optional
-export interface User {
-  id?: number;
-  email?: string;
-}
-```
-
-✅ **GOOD** - Explicit required fields:
-```json
-{
-  "User": {
-    "type": "object",
-    "required": ["id", "email"],
-    "properties": {
-      "id": { "type": "integer" },
-      "email": { "type": "string" },
-      "phoneNumber": { "type": "string" }
-    }
-  }
-}
-```
-
-**Result:**
-```typescript
-// ✅ Required fields are non-optional
-export interface User {
-  id: number;
-  email: string;
-  phoneNumber?: string;
-}
-```
-
-### 4. Add Descriptions for Better Documentation
+### 3. Add Descriptions for Better Documentation
 
 ✅ **ALWAYS include descriptions** - They become JSDoc comments:
 
@@ -592,7 +534,7 @@ export interface User {
 }
 ```
 
-### 5. Use `format` for Better Type Hints
+### 4. Use `format` for Better Type Hints
 
 Leverage OpenAPI formats to provide semantic meaning:
 
@@ -630,7 +572,7 @@ Leverage OpenAPI formats to provide semantic meaning:
 - `binary` - Binary data
 - `int32` / `int64` - Integer size hints
 
-### 6. Define Separate Read/Write Schemas
+### 5. Define Separate Read/Write Schemas
 
 Different operations often need different schemas. Use suffixes like `Read` and `Write`:
 
@@ -1236,13 +1178,10 @@ Is the field always present in the response/required in the request?
 ### Schema Names
 
 ✅ **GOOD naming patterns:**
-- `User` - Main entity
-- `UserRead` - Response schema
-- `UserWrite` - Request schema
-- `UserList` - Collection response
-- `UserCreate` - Creation payload
-- `UserUpdate` - Update payload
-- `UserSummary` - Simplified view
+- **Schemas:** `User`, `UserRead`, `UserWrite`, `UserList`, `UserCreate`, `UserUpdate`, `UserSummary`, `ErrorResponse`, `UserStatus`
+- **Request Bodies:** `UserRequest`, `CreateUserRequest`, `UpdateUserRequest`
+- **Responses:** `UserResponse`, `NotFoundError`, `ValidationError`, `UnauthorizedError`
+- **Headers:** `X-Rate-Limit`, `X-Total-Count`, `X-Request-Id`, `X-Pagination-Offset`
 
 ❌ **AVOID:**
 - `user` - Use PascalCase, not camelCase
