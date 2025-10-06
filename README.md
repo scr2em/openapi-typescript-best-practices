@@ -1455,6 +1455,8 @@ export interface User extends BaseEntity {
 
 ### 3. Arrays and Collections
 
+#### Simple Arrays
+
 ✅ **Array of primitives:**
 ```json
 {
@@ -1487,27 +1489,226 @@ tags?: string[];
 users?: User[];
 ```
 
-✅ **Pagination wrapper:**
+#### Paginated Responses
+
+For endpoints that return paginated data, create a generic pagination wrapper:
+
+✅ **BEST PRACTICE - Reusable pagination wrapper:**
 ```json
 {
-  "UserCollection": {
-    "type": "object",
-    "required": ["data", "total"],
-    "properties": {
-      "data": {
-        "type": "array",
-        "items": { "$ref": "#/components/schemas/User" }
-      },
-      "total": {
-        "type": "integer",
-        "description": "Total number of users"
-      },
-      "page": { "type": "integer" },
-      "perPage": { "type": "integer" }
+  "components": {
+    "schemas": {
+      "PaginatedUserResponse": {
+        "type": "object",
+        "required": ["data", "total", "count", "itemsPerPage"],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/User" },
+            "description": "Array of users for this page"
+          },
+          "total": {
+            "type": "integer",
+            "description": "Total number of items across all pages"
+          },
+          "count": {
+            "type": "integer",
+            "description": "Number of items in this page"
+          },
+          "itemsPerPage": {
+            "type": "integer",
+            "description": "Maximum items per page"
+          }
+        }
+      }
     }
   }
 }
 ```
+
+**Result:**
+```typescript
+export interface PaginatedUserResponse {
+  /** Array of users for this page */
+  data: User[];
+  /** Total number of items across all pages */
+  total: number;
+  /** Number of items in this page */
+  count: number;
+  /** Maximum items per page */
+  itemsPerPage: number;
+}
+```
+
+#### Endpoints That Return Either Plain Array OR Paginated Response
+
+When an endpoint can return either a plain array or a paginated response (e.g., based on query parameters), use `oneOf` in the response schema:
+
+✅ **BEST PRACTICE - Flexible response with oneOf:**
+```json
+{
+  "components": {
+    "schemas": {
+      "User": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" }
+        }
+      },
+      "UserArray": {
+        "type": "array",
+        "items": { "$ref": "#/components/schemas/User" }
+      },
+      "PaginatedUserResponse": {
+        "type": "object",
+        "required": ["data", "total", "count", "itemsPerPage"],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/User" }
+          },
+          "total": { "type": "integer" },
+          "count": { "type": "integer" },
+          "itemsPerPage": { "type": "integer" }
+        }
+      },
+      "UserListResponse": {
+        "oneOf": [
+          { "$ref": "#/components/schemas/UserArray" },
+          { "$ref": "#/components/schemas/PaginatedUserResponse" }
+        ]
+      }
+    },
+    "responses": {
+      "UserListResponse": {
+        "description": "List of users (plain array or paginated)",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/UserListResponse"
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/users": {
+      "get": {
+        "operationId": "getUsers",
+        "parameters": [
+          {
+            "name": "paginate",
+            "in": "query",
+            "description": "Whether to return paginated results",
+            "schema": { "type": "boolean", "default": false }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/UserListResponse"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+**Result:**
+```typescript
+// Plain array schema
+export type UserArray = User[];
+
+// Paginated response schema
+export interface PaginatedUserResponse {
+  data: User[];
+  total: number;
+  count: number;
+  itemsPerPage: number;
+}
+
+// Unified response type
+export type UserListResponse = UserArray | PaginatedUserResponse;
+
+// Usage
+const response: UserListResponse = await api.getUsers({ paginate: true });
+
+// Type guard to check which type was returned
+if (Array.isArray(response)) {
+  // Plain array
+  console.log(`Got ${response.length} users`);
+} else {
+  // Paginated response
+  console.log(`Got ${response.count} of ${response.total} users`);
+}
+```
+
+**Benefits of this approach:**
+- ✅ Single endpoint handles both use cases
+- ✅ Type-safe - TypeScript knows both possible response shapes
+- ✅ Reusable pagination structure across different entities
+- ✅ Clear documentation of response variations
+
+**💡 Pro Tip - Generic Pagination Schemas:**
+
+For multiple entities, create entity-specific paginated responses:
+
+```json
+{
+  "components": {
+    "schemas": {
+      "PaginatedUserResponse": {
+        "type": "object",
+        "required": ["data", "total", "count", "itemsPerPage"],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/User" }
+          },
+          "total": { "type": "integer" },
+          "count": { "type": "integer" },
+          "itemsPerPage": { "type": "integer" }
+        }
+      },
+      "PaginatedProductResponse": {
+        "type": "object",
+        "required": ["data", "total", "count", "itemsPerPage"],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Product" }
+          },
+          "total": { "type": "integer" },
+          "count": { "type": "integer" },
+          "itemsPerPage": { "type": "integer" }
+        }
+      }
+    }
+  }
+}
+```
+
+This gives you clean, type-safe interfaces:
+```typescript
+export interface PaginatedUserResponse {
+  data: User[];
+  total: number;
+  count: number;
+  itemsPerPage: number;
+}
+
+export interface PaginatedProductResponse {
+  data: Product[];
+  total: number;
+  count: number;
+  itemsPerPage: number;
+}
+```
+
+---
 
 ### 4. Nested Objects
 
