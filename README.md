@@ -279,13 +279,13 @@ Leverage OpenAPI formats to provide semantic meaning:
 
 ### 5. Define Separate Read/Write Schemas
 
-Different operations often need different schemas. Use suffixes like `-read` and `-write`:
+Different operations often need different schemas. Use suffixes like `Read` and `Write`:
 
 ```json
 {
   "components": {
     "schemas": {
-      "User-read": {
+      "UserRead": {
         "type": "object",
         "required": ["id", "email", "createdAt"],
         "properties": {
@@ -295,7 +295,7 @@ Different operations often need different schemas. Use suffixes like `-read` and
           "updatedAt": { "type": "string", "format": "date-time" }
         }
       },
-      "User-write": {
+      "UserWrite": {
         "type": "object",
         "required": ["email"],
         "properties": {
@@ -727,7 +727,7 @@ const article4: Article = {
 
 3. **Don't confuse "optional in request" with "nullable in response"**:
    - Create separate schemas for requests and responses
-   - Use `-write` suffix for request schemas, `-read` for responses
+   - Use `Write` suffix for request schemas, `Read` for responses
 
 ---
 
