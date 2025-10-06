@@ -64,36 +64,14 @@ Key flags:
 
 ## Schema Design Best Practices
 
-### 1. Always Use `components/schemas` for Reusable Types
+### 1. Always Use `components` for Reusable Definitions
 
-❌ **BAD** - Inline schema definition:
-```json
-{
-  "paths": {
-    "/users": {
-      "get": {
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "id": { "type": "integer" },
-                    "name": { "type": "string" }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-```
+Define all reusable types in the `components` section (schemas, requestBodies, and responses) rather than inline. This promotes consistency, maintainability, and follows the DRY principle.
 
-✅ **GOOD** - Reusable schema component:
+#### Use `components/schemas` for Data Models
+
+Define your data structures once and reference them everywhere:
+
 ```json
 {
   "components": {
@@ -105,22 +83,13 @@ Key flags:
           "id": { "type": "integer" },
           "name": { "type": "string" }
         }
-      }
-    }
-  },
-  "paths": {
-    "/users": {
-      "get": {
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            }
-          }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["error", "message"],
+        "properties": {
+          "error": { "type": "string" },
+          "message": { "type": "string" }
         }
       }
     }
@@ -128,16 +97,106 @@ Key flags:
 }
 ```
 
-**Result:**
-```typescript
-// ✅ Clean, reusable interface
-export interface User {
-  id: number;
-  name: string;
+#### Use `components/requestBodies` for Reusable Request Bodies
+
+When the same request body is used across multiple endpoints (e.g., create and update):
+
+```json
+{
+  "components": {
+    "requestBodies": {
+      "UserRequest": {
+        "description": "User data for creation or update",
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/UserWrite" }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/users": {
+      "post": {
+        "requestBody": { "$ref": "#/components/requestBodies/UserRequest" }
+      }
+    },
+    "/users/{id}": {
+      "put": {
+        "requestBody": { "$ref": "#/components/requestBodies/UserRequest" }
+      }
+    }
+  }
 }
 ```
 
----
+#### Use `components/responses` for Common Responses
+
+Especially useful for standardizing error responses across all endpoints:
+
+```json
+{
+  "components": {
+    "responses": {
+      "NotFoundError": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "ValidationError": {
+        "description": "Validation error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "UnauthorizedError": {
+        "description": "Unauthorized access",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/users/{id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "User retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserRead" }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFoundError" },
+          "401": { "$ref": "#/components/responses/UnauthorizedError" }
+        }
+      }
+    }
+  }
+}
+```
+
+**Benefits of using `components`:**
+- ✅ **DRY (Don't Repeat Yourself)** - Define once, use everywhere
+- ✅ **Consistency** - Standardized structures across all endpoints
+- ✅ **Maintainability** - Update in one place, reflected everywhere
+- ✅ **Type Safety** - Generates clean, reusable TypeScript interfaces
+- ✅ **Documentation** - Centralized, well-documented types
+
+**Naming Recommendations:**
+- Schemas: `User`, `UserRead`, `UserWrite`, `ErrorResponse`
+- Request Bodies: `UserRequest`, `CreateUserRequest`, `UpdateUserRequest`
+- Responses: `UserResponse`, `NotFoundError`, `ValidationError`
 
 ### 2. Use `required` to Define Mandatory Fields
 
@@ -188,8 +247,6 @@ export interface User {
 }
 ```
 
----
-
 ### 3. Add Descriptions for Better Documentation
 
 ✅ **ALWAYS include descriptions** - They become JSDoc comments:
@@ -235,8 +292,6 @@ export interface User {
 }
 ```
 
----
-
 ### 4. Use `format` for Better Type Hints
 
 Leverage OpenAPI formats to provide semantic meaning:
@@ -274,8 +329,6 @@ Leverage OpenAPI formats to provide semantic meaning:
 - `uuid` - UUID strings
 - `binary` - Binary data
 - `int32` / `int64` - Integer size hints
-
----
 
 ### 5. Define Separate Read/Write Schemas
 
@@ -1627,7 +1680,9 @@ When writing OpenAPI schemas, ensure:
 - [ ] Descriptions on schemas and properties
 - [ ] Appropriate `format` for strings (email, uri, date-time, etc.)
 - [ ] Enums for fixed value sets
-- [ ] Separate schemas for read/write operations when needed
+- [ ] Separate schemas for read/write operations when needed (use `Read`/`Write` suffixes, not `-read`/`-write`)
+- [ ] Reusable request bodies defined in `components/requestBodies`
+- [ ] Reusable responses (especially errors) defined in `components/responses`
 - [ ] `operationId` on all path operations
 - [ ] Response schemas defined for all status codes
 - [ ] Examples provided for complex schemas
