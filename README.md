@@ -349,6 +349,7 @@ Especially useful for standardizing error responses across all endpoints:
 - Schemas: `User`, `UserRead`, `UserWrite`, `ErrorResponse`, `UserStatus`
 - Request Bodies: `UserRequest`, `CreateUserRequest`, `UpdateUserRequest`
 - Responses: `UserResponse`, `NotFoundError`, `ValidationError`, `UnauthorizedError`
+- Headers: `X-Rate-Limit`, `X-Total-Count`, `X-Request-Id`, `X-Pagination-Offset`
 
 ---
 
@@ -357,7 +358,147 @@ Especially useful for standardizing error responses across all endpoints:
 - ✅ Unique, endpoint-specific responses that will never be reused (e.g., a specific 200 success response)
 - ✅ Simple query parameters with primitive types
 
-### 2. Use `required` to Define Mandatory Fields
+---
+
+### 2. Use `components/headers` for Common Headers, Inline for Endpoint-Specific Ones
+
+Headers follow a different pattern than schemas - inline them when they're specific to an endpoint, but use `components/headers` when they're shared across multiple endpoints.
+
+#### Use `components/headers` for Common Headers
+
+Define reusable headers like authentication tokens, rate limiting, or pagination metadata:
+
+✅ **CORRECT - Reusable headers:**
+```json
+{
+  "components": {
+    "headers": {
+      "X-Rate-Limit": {
+        "description": "Number of requests allowed per hour",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      "X-Rate-Limit-Remaining": {
+        "description": "Number of requests remaining in the current period",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      "X-Total-Count": {
+        "description": "Total number of items available",
+        "schema": {
+          "type": "integer"
+        }
+      }
+    }
+  },
+  "paths": {
+    "/users": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "List of users",
+            "headers": {
+              "X-Rate-Limit": {
+                "$ref": "#/components/headers/X-Rate-Limit"
+              },
+              "X-Rate-Limit-Remaining": {
+                "$ref": "#/components/headers/X-Rate-Limit-Remaining"
+              },
+              "X-Total-Count": {
+                "$ref": "#/components/headers/X-Total-Count"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/User" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "List of products",
+            "headers": {
+              "X-Rate-Limit": {
+                "$ref": "#/components/headers/X-Rate-Limit"
+              },
+              "X-Rate-Limit-Remaining": {
+                "$ref": "#/components/headers/X-Rate-Limit-Remaining"
+              },
+              "X-Total-Count": {
+                "$ref": "#/components/headers/X-Total-Count"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Product" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+#### Inline Headers for Endpoint-Specific Ones
+
+When a header is unique to a specific endpoint, it's acceptable to define it inline:
+
+✅ **CORRECT - Endpoint-specific header:**
+```json
+{
+  "paths": {
+    "/export/data": {
+      "post": {
+        "responses": {
+          "202": {
+            "description": "Export initiated",
+            "headers": {
+              "X-Export-Job-Id": {
+                "description": "Unique identifier for this export job",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+**Decision Guide - Headers:**
+- **Use `components/headers`** for:
+  - ✅ Rate limiting headers (used across all endpoints)
+  - ✅ Pagination headers (used in list endpoints)
+  - ✅ Common authentication/authorization headers
+  - ✅ Standard API metadata headers
+  
+- **Inline headers** for:
+  - ✅ Job/task-specific identifiers
+  - ✅ Endpoint-unique tracking headers
+  - ✅ Headers that will never be reused elsewhere
+
+---
+
+### 3. Use `required` to Define Mandatory Fields
 
 ❌ **BAD** - No required fields:
 ```json
@@ -406,7 +547,7 @@ export interface User {
 }
 ```
 
-### 3. Add Descriptions for Better Documentation
+### 4. Add Descriptions for Better Documentation
 
 ✅ **ALWAYS include descriptions** - They become JSDoc comments:
 
@@ -451,7 +592,7 @@ export interface User {
 }
 ```
 
-### 4. Use `format` for Better Type Hints
+### 5. Use `format` for Better Type Hints
 
 Leverage OpenAPI formats to provide semantic meaning:
 
@@ -489,7 +630,7 @@ Leverage OpenAPI formats to provide semantic meaning:
 - `binary` - Binary data
 - `int32` / `int64` - Integer size hints
 
-### 5. Define Separate Read/Write Schemas
+### 6. Define Separate Read/Write Schemas
 
 Different operations often need different schemas. Use suffixes like `Read` and `Write`:
 
@@ -1833,15 +1974,17 @@ function sendNotification(notification: Notification) {
 When writing OpenAPI schemas, ensure:
 
 - [ ] Schema defined in `components/schemas` (not inline)
+- [ ] Enums defined in `components/schemas` (not inline)
 - [ ] Meaningful, PascalCase schema name
 - [ ] `required` array lists all mandatory fields
 - [ ] camelCase property names
 - [ ] Descriptions on schemas and properties
 - [ ] Appropriate `format` for strings (email, uri, date-time, etc.)
-- [ ] Enums for fixed value sets
 - [ ] Separate schemas for read/write operations when needed (use `Read`/`Write` suffixes, not `-read`/`-write`)
 - [ ] Reusable request bodies defined in `components/requestBodies`
 - [ ] Reusable responses (especially errors) defined in `components/responses`
+- [ ] Common headers (rate limiting, pagination) defined in `components/headers`
+- [ ] Endpoint-specific headers can be inlined
 - [ ] `operationId` on all path operations
 - [ ] Response schemas defined for all status codes
 - [ ] Examples provided for complex schemas
