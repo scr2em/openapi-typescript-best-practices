@@ -172,7 +172,7 @@ Define your data structures and enums once and reference them everywhere:
         "required": true,
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/UserWrite" }
+            "schema": { "$ref": "#/components/schemas/UserRequest" }
           }
         }
       }
@@ -203,7 +203,7 @@ Define your data structures and enums once and reference them everywhere:
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/UserWrite" }
+              "schema": { "$ref": "#/components/schemas/UserRequest" }
             }
           }
         }
@@ -215,7 +215,7 @@ Define your data structures and enums once and reference them everywhere:
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/UserWrite" }
+              "schema": { "$ref": "#/components/schemas/UserRequest" }
             }
           }
         }
@@ -269,7 +269,7 @@ Especially useful for standardizing error responses across all endpoints:
             "description": "User retrieved successfully",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/UserRead" }
+                "schema": { "$ref": "#/components/schemas/UserResponse" }
               }
             }
           },
@@ -285,7 +285,7 @@ Especially useful for standardizing error responses across all endpoints:
             "description": "Product retrieved successfully",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ProductRead" }
+                "schema": { "$ref": "#/components/schemas/ProductResponse" }
               }
             }
           },
@@ -572,15 +572,15 @@ Leverage OpenAPI formats to provide semantic meaning:
 - `binary` - Binary data
 - `int32` / `int64` - Integer size hints
 
-### 5. Define Separate Read/Write Schemas
+### 5. Define Separate Response/Request Schemas
 
-Different operations often need different schemas. Use suffixes like `Read` and `Write`:
+Different operations often need different schemas. Use suffixes like `Response` and `Request`:
 
 ```json
 {
   "components": {
     "schemas": {
-      "UserRead": {
+      "UserResponse": {
         "type": "object",
         "required": ["id", "email", "createdAt"],
         "properties": {
@@ -590,7 +590,7 @@ Different operations often need different schemas. Use suffixes like `Read` and 
           "updatedAt": { "type": "string", "format": "date-time" }
         }
       },
-      "UserWrite": {
+      "UserRequest": {
         "type": "object",
         "required": ["email"],
         "properties": {
@@ -606,14 +606,14 @@ Different operations often need different schemas. Use suffixes like `Read` and 
 
 **Result:**
 ```typescript
-export interface UserRead {
+export interface UserResponse {
   id: number;
   email: string;
   createdAt: string;
   updatedAt?: string;
 }
 
-export interface UserWrite {
+export interface UserRequest {
   email: string;
   firstName?: string;
   lastName?: string;
@@ -1022,7 +1022,7 @@ const article4: Article = {
 
 3. **Don't confuse "optional in request" with "nullable in response"**:
    - Create separate schemas for requests and responses
-   - Use `Write` suffix for request schemas, `Read` for responses
+   - Use `Request` suffix for request schemas, `Response` for responses
 
 ---
 
@@ -1178,7 +1178,7 @@ Is the field always present in the response/required in the request?
 ### Schema Names
 
 ✅ **GOOD naming patterns:**
-- **Schemas:** `User`, `UserRead`, `UserWrite`, `UserList`, `UserCreate`, `UserUpdate`, `UserSummary`, `ErrorResponse`, `UserStatus`
+- **Schemas:** `User`, `UserResponse`, `UserRequest`, `UserList`, `UserCreate`, `UserUpdate`, `UserSummary`, `ErrorResponse`, `UserStatus`
 - **Request Bodies:** `UserRequest`, `CreateUserRequest`, `UpdateUserRequest`
 - **Responses:** `UserResponse`, `NotFoundError`, `ValidationError`, `UnauthorizedError`
 - **Headers:** `X-Rate-Limit`, `X-Total-Count`, `X-Request-Id`, `X-Pagination-Offset`
@@ -2113,7 +2113,7 @@ When writing OpenAPI schemas, ensure:
 - [ ] camelCase property names
 - [ ] Descriptions on schemas and properties
 - [ ] Appropriate `format` for strings (email, uri, date-time, etc.)
-- [ ] Separate schemas for read/write operations when needed (use `Read`/`Write` suffixes, not `-read`/`-write`)
+- [ ] Separate schemas for response/request operations when needed (use `Response`/`Request` suffixes, not `-response`/`-request`)
 - [ ] Reusable request bodies defined in `components/requestBodies`
 - [ ] Reusable responses (especially errors) defined in `components/responses`
 - [ ] Common headers (rate limiting, pagination) defined in `components/headers`
