@@ -18,21 +18,29 @@ Claude loads the skill automatically when you create, edit, review, or debug an 
 
 ## Installing the skill
 
-Clone this repo into your Claude skills directory (personal) or a project's `.claude/skills/` directory (shared with the team):
+**Personal** (available in all your projects):
 
 ```bash
-# Personal - available in all your projects
-git clone <repo-url> ~/.claude/skills/openapi-typescript-best-practices
-
-# Project - committed alongside the code
-git clone <repo-url> .claude/skills/openapi-typescript-best-practices
+git clone https://github.com/scr2em/openapi-typescript-best-practices.git ~/.claude/skills/openapi-typescript-best-practices
 ```
 
-Or symlink an existing checkout:
+**Project** (shared with your team via the repo, run from the project root):
 
 ```bash
-ln -s "$(pwd)" ~/.claude/skills/openapi-typescript-best-practices
+git submodule add https://github.com/scr2em/openapi-typescript-best-practices.git .claude/skills/openapi-typescript-best-practices
 ```
+
+To update later:
+
+```bash
+# Personal
+git -C ~/.claude/skills/openapi-typescript-best-practices pull
+
+# Project
+git submodule update --remote .claude/skills/openapi-typescript-best-practices
+```
+
+Restart Claude Code after installing. You can confirm the skill is loaded by typing `/openapi-typescript-best-practices` or asking Claude to review an OpenAPI spec.
 
 ## Contents
 
